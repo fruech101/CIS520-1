@@ -12,7 +12,7 @@ Pintos booting with 4,096 kB RAM...
 Calibrating timer...  204,600 loops/s.
 Boot complete.
 Executing 'alarm-multiple':
-(alarm-multiple) beginfedwsqagdwafgdweqa
+(alarm-multiple) begin
 (alarm-multiple) Creating 5 threads to sleep 7 times each.
 (alarm-multiple) Thread 0 sleeps 10 ticks each time,
 (alarm-multiple) thread 1 sleeps 20 ticks each time, and so on.
