@@ -208,9 +208,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
     if(t->sleep_ticks == 0)
       {
       thread_unblock(t);
-	  lock_acquire(&sleep_list_lock);
       list_remove(&t->sleep_elem);
-	  lock_release(&sleep_list_lock);
       }
     }
 }
