@@ -102,12 +102,13 @@ timer_sleep (int64_t ticks)
 
   /* Save sleep amount in thread struct add to list of sleeping threads */
   thread_current()->sleep_ticks = ticks;
+  enum intr_level old_level = intr_disable();
   lock_acquire(&sleep_list_lock);
   list_push_back(&sleep_list, &thread_current()->sleep_elem);
   lock_release(&sleep_list_lock);
   
   /* Disable interrupts, saving the level */
-  enum intr_level old_level = intr_disable();
+  //enum intr_level old_level = intr_disable();
 
   /* Block thread until woken up after n ticks */
   thread_block();
