@@ -32,14 +32,43 @@ https://knowledgejunk.net/2011/05/06/avoiding-busy-wait-in-timer_sleep-on-pintos
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+pintos/src/devices/timer.c:
+/* List of sleeping threads */
+static struct list sleep_list;
 
+pintos/src/devices/timer.h:
+struct thread
+  {
+	...
+	/* Sleeping elements */
+	struct list_elem sleep_elem;        /* Sleeping list element */
+    int64_t sleep_ticks;                /* Tick count to sleep for */
+	...
+  };
+
+  
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe what happens in a call to your timer_sleep(),
 >> including the effects of the timer interrupt handler.
 
+The current thread has its "sleep_ticks" struct member set to the timer_sleep
+"ticks" argument. The thread is then added to the list of sleeping threads, 
+interrupts are disabled, the thread is blocked, then interrupts are reenabled.
+ 
+In the timer interrupt handler, we iterate over the list of sleeping threads, 
+decrementing the sleep count each time. If, after decrementing the sleep count,
+the count is 0, we remove the thread from the list of sleeping threads, and 
+unblock that thread. 
+
+
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
+
+To decrease time spent in the timer interrupt handler, we used a doubly linked
+list structure to keep track of our sleeping threads, as opposed to an 
+array/list of all threads. This way, we aren't wasting any time looking at
+threads which are not sleeping. 
 
 
 ---- SYNCHRONIZATION ----
