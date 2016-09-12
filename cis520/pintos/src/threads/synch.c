@@ -60,7 +60,7 @@ bool thread_priority_sort(const struct list_elem *a,
 	struct thread * A = list_entry(a, struct thread, elem);
 	struct thread * B = list_entry(b, struct thread, elem);
 	
-	return(A->priority < B->priority)
+	return(A->priority < B->priority);
 }
 
 
