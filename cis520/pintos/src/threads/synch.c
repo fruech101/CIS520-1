@@ -50,19 +50,6 @@ sema_init (struct semaphore *sema, unsigned value)
   list_init (&sema->waiters);
 }
 
-/* Compares the priority of two threads. Returns true if
-	the priority of thread A is less than priority of 
-	thread B. */
-bool thread_priority_sort(const struct list_elem *a,
-                             const struct list_elem *b,
-                             void *aux)
-{
-	struct thread * A = list_entry(a, struct thread, elem);
-	struct thread * B = list_entry(b, struct thread, elem);
-	
-	return(A->priority < B->priority);
-}
-
 
 /* Down or "P" operation on a semaphore.  Waits for SEMA's value
    to become positive and then atomically decrements it.
