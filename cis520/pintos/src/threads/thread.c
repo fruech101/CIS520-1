@@ -620,3 +620,13 @@ void add_to_ready_list(struct thread* t)
     ASSERT (thread_current() == t);
   }
 }
+
+void donate_priority(struct thread* holder, struct thread* waiter)
+{
+  struct thread* cur = thread_current(); 
+  int temp = holder->priority;
+  holder->thread_set_priority(cur->priority);
+  cur->thread_set_priority(temp);
+  list_remove(holder->elem);
+  list_insert_ordered(&ready_list, &holder->elem, thread_priority_sort, NULL);
+}
