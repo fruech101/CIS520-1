@@ -93,8 +93,8 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-	/* Sleeping elements */
-	struct list_elem sleep_elem;        /* Sleeping list element */
+    /* Sleeping elements */
+    struct list_elem sleep_elem;        /* Sleeping list element */
     int64_t sleep_ticks;                /* Tick count to sleep for */
 	
 #ifdef USERPROG
@@ -145,5 +145,5 @@ int thread_get_load_avg (void);
 bool thread_priority_sort(const struct list_elem *a,
                              const struct list_elem *b,
                              void *aux);
-
+void thread_ensure_priority_chain(void);
 #endif /* threads/thread.h */
