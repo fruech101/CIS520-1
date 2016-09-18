@@ -32,6 +32,9 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+bool
+list_contains_thread(struct list * l, struct thread * t);
+
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -296,6 +299,20 @@ lock_release (struct lock *lock)
   {
     thread_yield();
   }
+}
+
+bool
+list_contains_thread(struct list * l, struct thread * t)
+{
+  struct list_elem * e;
+  for (e = list_begin (&l); e != list_end (&l); e = list_next (e))
+  {
+    if(list_entry(e, struct thread, elem) == t)
+    {
+      return true;
+    }
+  }
+  return false;
 }
 
 /* Returns true if the current thread holds LOCK, false

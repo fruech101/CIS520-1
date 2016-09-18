@@ -152,4 +152,6 @@ bool thread_priority_sort(const struct list_elem *a,
                              void *aux);
 void thread_ensure_priority_chain(void);
 void thread_update_priority_chain(struct thread *t);
+
+void sort_ready_list(void);
 #endif /* threads/thread.h */

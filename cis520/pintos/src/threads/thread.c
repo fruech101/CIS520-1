@@ -352,6 +352,11 @@ thread_set_priority (int new_priority)
   thread_ensure_priority_chain();
 }
 
+void sort_ready_list()
+{
+  list_sort(&ready_list, thread_priority_sort, NULL);
+}
+
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) 
