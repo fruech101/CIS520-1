@@ -93,6 +93,11 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    /* Priority Donation Fields */
+    struct list_elem donor_card;
+    struct list donor_list;
+    struct thread * recipient;
+
     /* Sleeping elements */
     struct list_elem sleep_elem;        /* Sleeping list element */
     int64_t sleep_ticks;                /* Tick count to sleep for */
@@ -146,4 +151,5 @@ bool thread_priority_sort(const struct list_elem *a,
                              const struct list_elem *b,
                              void *aux);
 void thread_ensure_priority_chain(void);
+void thread_update_priority_chain(struct thread *t);
 #endif /* threads/thread.h */

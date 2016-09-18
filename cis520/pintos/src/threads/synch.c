@@ -197,6 +197,20 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+  /*
+  If thread_get_priority(holder) < thread_get_priority(current)
+    Find lowest level lock holder with no recipient: pleb
+    Trade priorities with pleb:
+      pleb->donors += me  (sort by ORIGINAL priority)
+      me->recipient = pleb
+  */ 
+  if((lock->holder != NULL) && (lock->holder->priority < thread_current()->priority))
+  {
+    list_insert_ordered(&lock->holder->donor_list, &thread_current()->donor_card, thread_priority_sort, NULL);
+    thread_set_priority(lock->holder->priority);
+
+  }
+
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
 }
@@ -231,6 +245,15 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
+
+  /*
+  set our priority back to ORIGINAL
+  borgeois = lowest donor
+  give rest of donors to borgeois
+  update borgeois:
+    borgeois priority = highest ORIGINAL priority in donor list
+    tell each donor that borgeois is new recipient
+  */
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
