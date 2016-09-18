@@ -260,6 +260,15 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
+  /*
+  set our priority back to ORIGINAL
+  borgeois = lowest donor
+  give rest of donors to borgeois
+  update borgeois:
+    borgeois priority = highest ORIGINAL priority in donor list
+    tell each donor that borgeois is new recipient
+  */
+
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 }
