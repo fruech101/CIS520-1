@@ -260,6 +260,8 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
+  bool unwound = 0;
+
   // Check if we've received any priority donations
   if(!list_empty(&lock->holder->donor_list))
   {
@@ -283,10 +285,17 @@ lock_release (struct lock *lock)
       // Add donor to new pleb's donor list
       list_push_back(&new_pleb->donor_list, iter_donor_card);
     }
+
+    unwound = 1;
   }
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+
+  if(unwound)
+  {
+    thread_yield();
+  }
 }
 
 /* Returns true if the current thread holds LOCK, false
