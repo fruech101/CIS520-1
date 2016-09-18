@@ -39,11 +39,11 @@ static struct list sleep_list;
 pintos/src/devices/timer.h:
 struct thread
   {
-	...
-	/* Sleeping elements */
-	struct list_elem sleep_elem;        /* Sleeping list element */
-    int64_t sleep_ticks;                /* Tick count to sleep for */
-	...
+  ...
+  /* Sleeping elements */
+  struct list_elem sleep_elem;        /* Sleeping list element */
+  int64_t sleep_ticks;                /* Tick count to sleep for */
+  ...
   };
 
   
