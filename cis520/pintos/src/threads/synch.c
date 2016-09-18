@@ -213,7 +213,7 @@ lock_acquire (struct lock *lock)
       }
 
       /* Add current thread to pleb's donor list */
-      list_push_back(&pleb->donor_list, &current->donor_card, thread_priority_sort, NULL);
+      list_push_back(&pleb->donor_list, &current->donor_card);
 
       /* Set the current thread's recipient as pleb*/
       current->recipient = pleb;
