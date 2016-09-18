@@ -197,6 +197,34 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+  struct thread * pleb = NULL;                /* Lowest thread in nested donation chain (has no recipient)  */
+  struct thread * current = thread_current(); /* Current thread                                             */
+  int priority_bus;                           /* Used to swap priorities of two threads                     */
+
+  if(lock->holder)
+  {
+    pleb = lock->holder;
+    if((lock->holder)->priority < current->priority)
+    {
+      while(pleb->recipient != NULL)
+      {
+        /* Set pleb to pleb's recipient if a recipient exists */
+        pleb = pleb->recipient;
+      }
+
+      /* Add current thread to pleb's donor list */
+      list_push_back(&pleb->donor_list, &current->donor_card, thread_priority_sort, NULL);
+
+      /* Set the current thread's recipient as pleb*/
+      current->recipient = pleb;
+
+      /* Swap current thread's and pleb's priorities */
+      priority_bus = current->priority;
+      current->priority = pleb->priority;
+      pleb->priority = priority_bus;
+    }
+  }
+  
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
 }

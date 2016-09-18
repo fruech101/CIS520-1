@@ -1,2 +1,3 @@
 *.VC.DB
 *.VC.DB-wal
+*.DB-shm
