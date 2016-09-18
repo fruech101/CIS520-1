@@ -201,7 +201,7 @@ lock_acquire (struct lock *lock)
   struct thread * current = thread_current(); /* Current thread                                             */
   int priority_bus;                           /* Used to swap priorities of two threads                     */
 
-  if(lock->holder)
+  if(lock->holder != NULL)
   {
     pleb = lock->holder;
     if((lock->holder)->priority < current->priority)
@@ -260,14 +260,30 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  /*
-  set our priority back to ORIGINAL
-  borgeois = lowest donor
-  give rest of donors to borgeois
-  update borgeois:
-    borgeois priority = highest ORIGINAL priority in donor list
-    tell each donor that borgeois is new recipient
-  */
+  // Check if we've received any priority donations
+  if(!list_empty(&lock->holder->donor_list))
+  {
+    // Get pointer to next highest in donation chain
+    struct thread * new_pleb = list_entry(list_pop_front(&lock->holder->donor_list), struct thread, donor_card);
+
+    // Swap priorities
+    int temp_pri = lock->holder->priority;
+    lock->holder->priority = new_pleb->priority;
+    new_pleb->priority = temp_pri;
+
+    // Move all of our donations to the next highest in the chain
+    while(!list_empty(&lock->holder->donor_list))
+    {
+      struct list_elem * iter_donor_card = list_pop_front(&lock->holder->donor_list);
+      struct thread * iter_donor = list_entry(iter_donor_card, struct thread, donor_card);
+
+      // Update donor's recipient field to point to the new pleb
+      iter_donor->recipient = new_pleb;
+
+      // Add donor to new pleb's donor list
+      list_push_back(&new_pleb->donor_list, iter_donor_card);
+    }
+  }
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
