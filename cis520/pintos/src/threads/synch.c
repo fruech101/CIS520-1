@@ -277,7 +277,7 @@ lock_release (struct lock *lock)
       struct thread * donor = list_entry(e, struct thread, donor_card);
 
       // Check if donor was waiting on this lock
-      if(list_contains_thread(&lock->semaphore->waiters, donor))
+      if(list_contains_thread(&lock->semaphore.waiters, donor))
       {
         temp_pri = lock->holder->priority;
         lock->holder->priority = donor->priority;
@@ -289,26 +289,30 @@ lock_release (struct lock *lock)
         continue;
       }
 
-    list_push_front(&new_pleb->donor_list, );
+    list_push_front(&new_pleb->donor_list, e);
+    donor->recipient = new_pleb;
+    
     }
 
-    // Move all of our donations to the next highest in the chain
-    while(!list_empty(&lock->holder->donor_list))
-    {
-      struct list_elem * iter_donor_card = list_pop_front(&lock->holder->donor_list);
-      struct thread * iter_donor = list_entry(iter_donor_card, struct thread, donor_card);
+    // // Move all of our donations to the next highest in the chain
+    // while(!list_empty(&lock->holder->donor_list))
+    // {
+    //   struct list_elem * iter_donor_card = list_pop_front(&lock->holder->donor_list);
+    //   struct thread * iter_donor = list_entry(iter_donor_card, struct thread, donor_card);
 
-      // Update donor's recipient field to point to the new pleb
-      iter_donor->recipient = new_pleb;
+    //   // Update donor's recipient field to point to the new pleb
+    //   iter_donor->recipient = new_pleb;
 
-      // Add donor to new pleb's donor list
-      list_push_back(&new_pleb->donor_list, iter_donor_card);
-    }
+    //   // Add donor to new pleb's donor list
+    //   list_push_back(&new_pleb->donor_list, iter_donor_card);
+    // }
 
     // Swap priorities
     temp_pri = lock->holder->priority;
     lock->holder->priority = new_pleb->priority;
     new_pleb->priority = temp_pri;
+
+    sort_ready_list();    /* Resort ready list    */
 
     unwound = 1;
   }
