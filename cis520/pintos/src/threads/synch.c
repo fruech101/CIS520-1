@@ -264,6 +264,7 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
   bool unwound = 0;
+  int temp_pri;
 
   // Check if we've received any priority donations
   if(!list_empty(&lock->holder->donor_list))
@@ -271,10 +272,25 @@ lock_release (struct lock *lock)
     // Get pointer to next highest in donation chain
     struct thread * new_pleb = list_entry(list_pop_front(&lock->holder->donor_list), struct thread, donor_card);
 
-    // Swap priorities
-    int temp_pri = lock->holder->priority;
-    lock->holder->priority = new_pleb->priority;
-    new_pleb->priority = temp_pri;
+    for(struct list_elem * e = list_rbegin(&lock->holder->donor_list); e != list_rend(&lock->holder->donor_list); e = list_prev(e))
+    {
+      struct thread * donor = list_entry(e, struct thread, donor_card);
+
+      // Check if donor was waiting on this lock
+      if(list_contains_thread(&lock->semaphore->waiters, donor))
+      {
+        temp_pri = lock->holder->priority;
+        lock->holder->priority = donor->priority;
+        donor->priority = temp_pri;
+
+        list_remove(e);
+        donor->recipient = NULL;
+
+        continue;
+      }
+
+    list_push_front(&new_pleb->donor_list, )
+    }
 
     // Move all of our donations to the next highest in the chain
     while(!list_empty(&lock->holder->donor_list))
@@ -288,6 +304,11 @@ lock_release (struct lock *lock)
       // Add donor to new pleb's donor list
       list_push_back(&new_pleb->donor_list, iter_donor_card);
     }
+
+    // Swap priorities
+    temp_pri = lock->holder->priority;
+    lock->holder->priority = new_pleb->priority;
+    new_pleb->priority = temp_pri;
 
     unwound = 1;
   }
