@@ -222,9 +222,9 @@ lock_acquire (struct lock *lock)
       current->recipient = pleb;
 
       /* Swap current thread's and pleb's priorities */
-      priority_bus = pleb->priority
+      priority_bus = pleb->priority;
       pleb->priority = current->priority;
-      thread_set_priority(priority->bus);
+      thread_set_priority(priority_bus);
     }
   }
   
@@ -289,7 +289,7 @@ lock_release (struct lock *lock)
         continue;
       }
 
-    list_push_front(&new_pleb->donor_list, )
+    list_push_front(&new_pleb->donor_list, );
     }
 
     // Move all of our donations to the next highest in the chain
