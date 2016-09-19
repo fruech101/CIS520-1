@@ -228,12 +228,12 @@ lock_acquire (struct lock *lock)
       thread_set_priority(priority_bus);
     }
   }
-  
+
   sema_down (&lock->semaphore);
-if (!list_empty(lock->semaphore.waiters))
-  lock->holder = list_entry(list_pop_back(&lock->semaphore.waiters), struct thread, elem);
-else  
-  lock->holder = thread_current ();
+  if (!list_empty(&lock->semaphore.waiters))
+    lock->holder = list_entry(list_pop_back(&lock->semaphore.waiters), struct thread, elem);
+  else
+    lock->holder = thread_current ();
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
