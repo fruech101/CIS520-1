@@ -21,7 +21,7 @@ Nolan Casimir <casimirn@ksu.edu>
 >> course text, lecture notes, and course staff.
 
 https://knowledgejunk.net/2011/05/06/avoiding-busy-wait-in-timer_sleep-on-pintos/
-
+https://github.com/ryantimwilson/Pintos-Project-1
 
                  ALARM CLOCK
                  ===========
@@ -47,6 +47,7 @@ struct thread
   };
 
   
+  
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe what happens in a call to your timer_sleep(),
@@ -62,6 +63,7 @@ the count is 0, we remove the thread from the list of sleeping threads, and
 unblock that thread. 
 
 
+
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
 
@@ -69,6 +71,7 @@ To decrease time spent in the timer interrupt handler, we used a doubly linked
 list structure to keep track of our sleeping threads, as opposed to an 
 array/list of all threads. This way, we aren't wasting any time looking at
 threads which are not sleeping. 
+
 
 
 ---- SYNCHRONIZATION ----
@@ -102,26 +105,60 @@ struct thread
   {
     ...
     /* Priority Donation Fields */
-    struct list_elem donor_card;
-    struct list donor_list;
-    struct thread * recipient;
+    int original_priority;          /* Keeps track of thread's original priority                    */
+    struct list_elem donor_card;    /* List element to be inserted into list of priority recipient  */
+    struct list donor_list;         /* List of threads donating to this thread                      */
+    struct lock *recipient_lock;    /* Pointer to desired lock                                      */
     ...
   };
 
 
+
 >> B2: Explain the data structure used to track priority donation.
+
+We used a list struct in our thread struct so any given thread can keep track of the
+thread donors which have donated their priorities to that thread. To belong in a donor list,
+every thread needed a 'donor_card' which has a reference to the donating thread. In addition,
+a reference is kept to a lock which this given thread is waiting to acquire. This way, we can
+keep track of where any thread's priority is going. 
+
 
 
 ---- ALGORITHMS ----
 
 >> B3: How do you ensure that the highest priority thread waiting for
 >> a lock, semaphore, or condition variable wakes up first?
+We regularly sort the semaphore 'waiters' list by priority (low to high)
+and then wake up the thread on the back of the list (which will have the
+highest priority).
+
+
 
 >> B4: Describe the sequence of events when a call to lock_acquire()
 >> causes a priority donation.  How is nested donation handled?
 
+The first thing to do in lock_acquire is check if the lock currently has a holder.
+If so, we point the current thread's recipient_lock struct member to the lock we
+are trying to acquire, and then add the current thread to the donor list of the
+thread holding the lock. During the call to sema_down in lock_acquire, if the thread
+trying to acquire the lock must wait in the semaphore's waiting list, we call another
+method, thread_donate_priority(). This method traverses (max) 8 layers down from the 
+current thread, by way of each threads' 'recipient_lock' pointer, and gives each of 
+those threads the current thread's priority. After this has completed, the current
+thread is blocked in sema_down, as before. 
+
+
+
 >> B5: Describe the sequence of events when lock_release() is called
 >> on a lock that a higher-priority thread is waiting for.
+
+In lock_release(), we traverse the donor list of the current thread, and
+remove any threads which are waiting on the lock being released. Once any 
+necessary threads have been removed, the current thread's priority is updated
+(via 'thread_update_priority()') by setting it to the highest priority of any
+of its donors, or its original priority if this current thread has no donors. 
+After this, sema_up() is called, which sorts the waiters list and wakes up
+the thread in the waiters list with the highest priority. 
 
 ---- SYNCHRONIZATION ----
 
