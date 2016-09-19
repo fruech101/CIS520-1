@@ -32,8 +32,8 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
-bool
-list_contains_thread(struct list * l, struct thread * t);
+bool list_contains_thread(struct list * l, struct thread * t);
+void list_insert_ordered (struct list *, struct list_elem *, list_less_func *, void *aux);
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
