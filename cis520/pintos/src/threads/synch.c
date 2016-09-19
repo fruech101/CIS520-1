@@ -207,19 +207,20 @@ lock_acquire (struct lock *lock)
   if(lock->holder != NULL)
   {
     pleb = lock->holder;
+	list_insert_sorted(&lock->semaphore.waiters, current->elem, thread_priority_sort, NULL);
     if((lock->holder)->priority < current->priority)
     {
-      while(pleb->recipient != NULL)
-      {
+      //while(pleb->recipient != NULL)
+      //{
         /* Set pleb to pleb's recipient if a recipient exists */
-        pleb = pleb->recipient;
-      }
+      //  pleb = pleb->recipient;
+      //}
 
       /* Add current thread to pleb's donor list */
       list_push_back(&pleb->donor_list, &current->donor_card);
 
       /* Set the current thread's recipient as pleb*/
-      current->recipient = pleb;
+      //current->recipient = pleb;
 
       /* Swap current thread's and pleb's priorities */
       priority_bus = pleb->priority;
