@@ -230,7 +230,7 @@ lock_acquire (struct lock *lock)
   }
   
   sema_down (&lock->semaphore);
-if (lock->semaphore.waiters != NULL)
+if (!list_empty(lock->semaphore.waiters))
   lock->holder = list_entry(list_pop_back(&lock->semaphore.waiters), struct thread, elem);
 else  
   lock->holder = thread_current ();
