@@ -54,6 +54,8 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
+#define MAX(a,b) ( (a) > (b) ? (a) : (b) )
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -249,7 +251,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_insert_ordered (&ready_list, &t->elem, thread_priority_sort, NULL);
+  list_insert_ordered(&ready_list, &t->elem, thread_priority_sort, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -311,7 +313,7 @@ thread_exit (void)
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
 void
-thread_yield (void) 
+thread_yield (void)
 {
   struct thread *cur = thread_current ();
   enum intr_level old_level;
@@ -319,8 +321,10 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
-    list_insert_ordered (&ready_list, &cur->elem, thread_priority_sort, NULL); 
+  if (cur != idle_thread)
+    {
+      list_insert_ordered(&ready_list, &cur->elem, thread_priority_sort, NULL);
+    }
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -347,14 +351,21 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
-  list_sort(&ready_list, thread_priority_sort, NULL);
-  thread_ensure_priority_chain();
-}
+  int old_priority = thread_current()->priority;
+  thread_current ()->original_priority = new_priority;
+  thread_update_priority();
 
-void sort_ready_list()
-{
-  list_sort(&ready_list, thread_priority_sort, NULL);
+  // If new priority is greater, donate it
+  if (old_priority < thread_current()->priority)
+    {
+      thread_donate_priority();
+    }
+
+  // If new priority is less, test if the processor should be yielded
+  if (old_priority > thread_current()->priority)
+    {
+      thread_ensure_priority_chain();
+    }
 }
 
 /* Returns the current thread's priority. */
@@ -482,8 +493,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 
+  // Added initializations for priority donation
+  t->original_priority = priority;
+  t->recipient_lock = NULL;
   list_init(&t->donor_list);
-  t->recipient = NULL;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -600,36 +613,71 @@ allocate_tid (void)
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
-
-/* Compares the priority of two threads. Returns true if
-	the priority of thread A is less than priority of 
-	thread B. */
-bool thread_priority_sort(const struct list_elem *a,
-                             const struct list_elem *b,
-                             void *aux UNUSED)
+/* list_less_func for sorting lists from least to greatest by priority */
+bool thread_priority_sort (const struct list_elem *a,
+		   const struct list_elem *b,
+		   void *aux UNUSED)
 {
-	struct thread * A = list_entry(a, struct thread, elem);
-	struct thread * B = list_entry(b, struct thread, elem);
-	
-	return(A->priority < B->priority);
+  struct thread *A = list_entry(a, struct thread, elem);
+  struct thread *B = list_entry(b, struct thread, elem);
+  return(A->priority < B->priority);
 }
 
-void thread_ensure_priority_chain(void)
+/* Yield CPU if we're not the highest priority thread */
+void thread_ensure_priority_chain (void)
 {
-struct thread *cur = thread_current();
-struct thread *pri = NULL;
+if (list_empty(&ready_list)
+ || list_entry(list_back(&ready_list), struct thread, elem)->priority <= thread_current()->priority)
+  {
+  return;
+  }
 
-if(list_empty(&ready_list))
+// Yield CPU
+if (intr_context()) intr_yield_on_return();
+else thread_yield();
+}
+
+/* Pass our priority down the chain of lock holders waiting for locks */
+void thread_donate_priority (void)
+{
+  struct thread *t = thread_current();
+  struct lock *lock = t->recipient_lock;
+  int nest_level = 0;
+
+  // Check if current thread's priority needs donated
+  while ((lock         != NULL)                   /* Thread is waiting on a lock      */
+      && (lock->holder != NULL)                   /* That lock is being held          */
+      && (lock->holder->priority < t->priority)   /* Thread's pri should be passed on */
+      && (nest_level < 8))                        /* Limit to 8 nested levels         */
     {
-    return;
+      // Pass priority to holder
+      lock->holder->priority = t->priority;
+
+      // Update variables to check if next level needs priority donation
+      t = lock->holder;
+      lock = t->recipient_lock;
+
+      // Track nest level
+      nest_level++;
+    }
+}
+
+/* Recompute priority based on donors */
+void thread_update_priority (void)
+{
+  struct thread *cur = thread_current();
+
+  // If list is empty, just go back to original priority
+  if (list_empty(&cur->donor_list))
+    {
+      cur->priority = cur->original_priority;
+      return;
     }
 
-pri = list_entry(list_back(&ready_list), struct thread, elem);
+  // Ensure donor list is sorted
+  list_sort(&cur->donor_list, thread_priority_sort, NULL);
 
-if(pri->priority < cur->priority)
-    {
-    return;
-    }
-
-thread_yield();
+  // Assign priority based on highest donor
+  struct thread *s = list_entry(list_back(&cur->donor_list), struct thread, donor_card);
+  cur->priority = MAX(s->priority, cur->original_priority);
 }
