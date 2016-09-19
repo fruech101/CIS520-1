@@ -94,9 +94,10 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     /* Priority Donation Fields */
+    int original_priority;
     struct list_elem donor_card;
     struct list donor_list;
-    struct thread * recipient;
+    struct lock *recipient_lock;
 
     /* Sleeping elements */
     struct list_elem sleep_elem;        /* Sleeping list element */
@@ -147,11 +148,12 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-bool thread_priority_sort(const struct list_elem *a,
-                             const struct list_elem *b,
-                             void *aux);
-void thread_ensure_priority_chain(void);
-void thread_update_priority_chain(struct thread *t);
+bool thread_priority_sort (const struct list_elem *a,
+		   const struct list_elem *b,
+		   void *aux UNUSED);
 
-void sort_ready_list(void);
+void thread_ensure_priority_chain (void);
+void thread_donate_priority (void);
+void thread_update_priority (void);
+
 #endif /* threads/thread.h */
