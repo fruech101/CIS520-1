@@ -54,7 +54,7 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
-#define MAX(a,b) ( (a) > (b) ? (a) : (b) )
+#define NEST_LIMIT 8
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -648,7 +648,7 @@ void thread_donate_priority (void)
   while ((lock         != NULL)                   /* Thread is waiting on a lock      */
       && (lock->holder != NULL)                   /* That lock is being held          */
       && (lock->holder->priority < t->priority)   /* Thread's pri should be passed on */
-      && (nest_level < 8))                        /* Limit to 8 nested levels         */
+      && (nest_level < NEST_LIMIT))               /* Limit to 8 nested levels         */
     {
       // Pass priority to holder
       lock->holder->priority = t->priority;
@@ -679,5 +679,5 @@ void thread_update_priority (void)
 
   // Assign priority based on highest donor
   struct thread *s = list_entry(list_back(&cur->donor_list), struct thread, donor_card);
-  cur->priority = MAX(s->priority, cur->original_priority);
+  cur->priority = s->priority;
 }

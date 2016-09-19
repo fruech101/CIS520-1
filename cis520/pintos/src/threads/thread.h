@@ -153,7 +153,7 @@ bool thread_priority_sort (const struct list_elem *a,
 		   void *aux UNUSED);
 
 void thread_ensure_priority_chain (void);
-
 void thread_donate_priority (void);
 void thread_update_priority (void);
+
 #endif /* threads/thread.h */
