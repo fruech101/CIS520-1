@@ -36,7 +36,7 @@ pintos/src/devices/timer.c:
 /* List of sleeping threads */
 static struct list sleep_list;
 
-pintos/src/devices/timer.h:
+pintos/src/threads/thread.h:
 struct thread
   {
   ...
@@ -96,6 +96,18 @@ threads which are not sleeping.
 >> B1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+
+pintos/src/threads/thread.h:
+struct thread
+  {
+    ...
+    /* Priority Donation Fields */
+    struct list_elem donor_card;
+    struct list donor_list;
+    struct thread * recipient;
+    ...
+  };
+
 
 >> B2: Explain the data structure used to track priority donation.
 

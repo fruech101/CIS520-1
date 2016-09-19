@@ -222,9 +222,9 @@ lock_acquire (struct lock *lock)
       current->recipient = pleb;
 
       /* Swap current thread's and pleb's priorities */
-      priority_bus = current->priority;
-      current->priority = pleb->priority;
-      pleb->priority = priority_bus;
+      priority_bus = pleb->priority
+      pleb->priority = current->priority;
+      thread_set_priority(priority->bus);
     }
   }
   
