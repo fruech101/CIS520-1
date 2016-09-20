@@ -350,10 +350,16 @@ thread_foreach (thread_action_func *func, void *aux)
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) 
-{
+{  
+  enum intr_level old_level = intr_disable();
+
+  // Save prev and new priority
   int old_priority = thread_current()->priority;
-  thread_current ()->original_priority = new_priority;
-  thread_update_priority();
+  thread_current()->original_priority = new_priority;
+
+  // Update our "showing" priority based on donor list
+  thread_current()->priority = list_empty(&thread_current()->donor_list) ? thread_current()->original_priority
+                                               : list_entry(list_back(&thread_current()->donor_list), struct thread, donor_card)->priority;
 
   // If new priority is greater, donate it
   if (old_priority < thread_current()->priority)
@@ -366,6 +372,8 @@ thread_set_priority (int new_priority)
     {
       thread_ensure_priority_chain();
     }
+
+  intr_set_level(old_level);
 }
 
 /* Returns the current thread's priority. */
@@ -660,24 +668,4 @@ void thread_donate_priority (void)
       // Track nest level
       nest_level++;
     }
-}
-
-/* Recompute priority based on donors */
-void thread_update_priority (void)
-{
-  struct thread *cur = thread_current();
-
-  // If list is empty, just go back to original priority
-  if (list_empty(&cur->donor_list))
-    {
-      cur->priority = cur->original_priority;
-      return;
-    }
-
-  // Ensure donor list is sorted
-  list_sort(&cur->donor_list, thread_priority_sort, NULL);
-
-  // Assign priority based on highest donor
-  struct thread *s = list_entry(list_back(&cur->donor_list), struct thread, donor_card);
-  cur->priority = s->priority;
 }

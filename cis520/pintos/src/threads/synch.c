@@ -251,8 +251,6 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  lock->holder = NULL;
-
   // Remove any donors from our donor list that were waiting on this lock
   for(struct thread *t = list_entry(list_begin(&thread_current()->donor_list), struct thread, donor_card);
       &t->donor_card != list_end(&thread_current()->donor_list);
@@ -261,9 +259,11 @@ lock_release (struct lock *lock)
     if(t->recipient_lock == lock) list_remove(&t->donor_card);
     }
   
-  // Update running thread's priority after removing donors
-  thread_update_priority();
+  // Update lock holder's priority based on updated donor list
+  lock->holder->priority = list_empty(&lock->holder->donor_list) ? lock->holder->original_priority
+                                                                 : list_entry(list_back(&lock->holder->donor_list), struct thread, donor_card)->priority;
 
+  lock->holder = NULL;
   sema_up (&lock->semaphore);
 }
 
