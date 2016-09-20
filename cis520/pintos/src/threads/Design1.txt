@@ -36,6 +36,9 @@ pintos/src/devices/timer.c:
 /* List of sleeping threads */
 static struct list sleep_list;
 
+/* Lock for list of sleeping threads */
+static struct lock sleep_list_lock;
+
 pintos/src/threads/thread.h:
 struct thread
   {
@@ -53,9 +56,10 @@ struct thread
 >> A2: Briefly describe what happens in a call to your timer_sleep(),
 >> including the effects of the timer interrupt handler.
 
-The current thread has its "sleep_ticks" struct member set to the timer_sleep
-"ticks" argument. The thread is then added to the list of sleeping threads, 
-interrupts are disabled, the thread is blocked, then interrupts are reenabled.
+Firstly, interrupts are disabled. Then, the current thread has its "sleep_ticks"
+struct member set to the timer_sleep "ticks" argument. The thread is then added 
+to the list of sleeping threads, the thread is blocked, then interrupts are reenabled
+once the thread wakes up.
  
 In the timer interrupt handler, we iterate over the list of sleeping threads, 
 decrementing the sleep count each time. If, after decrementing the sleep count,
@@ -79,15 +83,39 @@ threads which are not sleeping.
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
 
+We are avoiding race conditions when multiple threads call timer_sleep by
+placing a sleep_list_lock on the current thread before pushing it to the
+back of the sleep_list. This way, only one thread can be accessing timer_sleep()
+at a time.
+
+
 
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
+
+We are avoiding race conditions when a timer interrupt occurs by
+disabling interupts at the begining of the timer_sleep function.
+This ensures timer_interrupt does not occur during the execution of
+timer_sleep.
+
 
 
 ---- RATIONALE ----
 
 >> A6: Why did you choose this design?  In what ways is it superior to
 >> other designs that you considered?
+
+When we originally started the project, we had no idea where to begin. We
+looked online and found a design that DID avoid busy waiting, but was
+horribly inefficient. It added a sleep_ticks elem to the thread struct
+that it would update and then in the timer interrupt, it would search through
+EVERY thread to see if it should wake it up. Well, not EVERY thread was trying
+to sleep. We spun a homebrewed variant of this design but added a list_elem
+field to the thread struct in addition the sleep_ticks count. This allowed us 
+to create a separate list exclusively for sleeping threads. That way during
+timer interrupts, we are only checking sleeping threads instead of ALL threads.
+On a system with hundreds (or thousands) of threads, this can save a LOT of CPU 
+time when we consider this search was occuring EVERY SINGLE timer tick.
 
 
 
@@ -116,11 +144,11 @@ struct thread
 
 >> B2: Explain the data structure used to track priority donation.
 
-We used a list struct in our thread struct so any given thread can keep track of the
+We used a (sorted) list struct in our thread struct so any given thread can keep track of the
 thread donors which have donated their priorities to that thread. To belong in a donor list,
 every thread needed a 'donor_card' which has a reference to the donating thread. In addition,
 a reference is kept to a lock which this given thread is waiting to acquire. This way, we can
-keep track of where any thread's priority is going. 
+keep track of where any thread's priority is going.
 
 
 
@@ -128,6 +156,7 @@ keep track of where any thread's priority is going.
 
 >> B3: How do you ensure that the highest priority thread waiting for
 >> a lock, semaphore, or condition variable wakes up first?
+
 We regularly sort the semaphore 'waiters' list by priority (low to high)
 and then wake up the thread on the back of the list (which will have the
 highest priority).
@@ -155,10 +184,12 @@ thread is blocked in sema_down, as before.
 In lock_release(), we traverse the donor list of the current thread, and
 remove any threads which are waiting on the lock being released. Once any 
 necessary threads have been removed, the current thread's priority is updated
-(via 'thread_update_priority()') by setting it to the highest priority of any
-of its donors, or its original priority if this current thread has no donors. 
-After this, sema_up() is called, which sorts the waiters list and wakes up
-the thread in the waiters list with the highest priority. 
+by setting it to the highest priority of any of its donors, or its original 
+priority if this current thread has no donors. After this, lock->holder is reset,
+and sema_up() is called, which sorts the waiters list and wakes up the thread in the
+waiters list with the highest priority. 
+
+
 
 ---- SYNCHRONIZATION ----
 
@@ -166,11 +197,26 @@ the thread in the waiters list with the highest priority.
 >> how your implementation avoids it.  Can you use a lock to avoid
 >> this race?
 
+Situation: a thread is currently modifying its priority when an interrupt occurs
+that modifies the donor_list. This could cause the current_thread to incorrectly
+set its priority (if the new donor is higher priority).
+This is handled by disabling interrupts at the beginning of thread_set_priority
+and reenabling them as the final responsibility of the function.
+
 ---- RATIONALE ----
 
 >> B7: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
 
+When we began working, we drew out several use cases on a white board and determined
+the desired behavior. After implementing what we thought was our desired behavior,
+we were unable to pass a few of the provided priority test. We were nearly there
+and looked online for a little help. We were able to find a solution that was similar
+in design to what we had been working on. We realized we had majorly overcomplicated
+the problem by trying to swap priorities back and forth, and pass priorities back to
+their original owner. It was much easier to just keep track of the original priority
+and revert back to that once we were done with donors. Never forget: "KISS" - Keep It
+Simple, Stupid!
 
               ADVANCED SCHEDULER [EXTRA CREDIT]
               =================================
